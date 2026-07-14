@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Court Piece</title>
+    <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+            overflow: hidden;
+        }
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #1b5e20;
+            color: white;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+        }
+        button {
+            padding: 8px 14px;
+            font-size: 14px;
+            cursor: pointer;
+            margin: 4px;
+        }
+        input[type="text"] {
+            padding: 6px;
+            font-size: 14px;
+            margin: 6px;
+            border-radius: 6px;
+            border: none;
+        }
+        .reveal-box {
+            display: inline-block;
+            background: white;
+            color: black;
+            border-radius: 8px;
+            padding: 10px;
+            margin: 6px;
+            min-width: 100px;
+        }
+        .dealer-highlight {
+            border: 3px solid gold;
+        }
+
+        #top-bar {
+            font-size: 18px;
+            font-weight: bold;
+            padding: 8px;
+            flex-shrink: 0;
+        }
+
+        #setup-area {
+            flex-shrink: 0;
+        }
+
+        #table-area {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 0;
+        }
+
+        .table-wrapper {
+            position: relative;
+            width: 560px;
+            height: 440px;
+        }
+        .player-slot {
+            position: absolute;
+            font-weight: bold;
+            font-size: 16px;
+            padding: 6px 12px;
+            border-radius: 8px;
+            background: rgba(255,255,255,0.1);
+        }
+        .player-slot.active-turn {
+            border: 3px solid gold;
+        }
+        .player-slot.top { top: 8px; left: 50%; transform: translateX(-50%); }
+        .player-slot.bottom { bottom: 5px; left: 50%; transform: translateX(-50%); }
+        .player-slot.left { left: -10px; top: 50%; transform: translateY(-50%); }
+        .player-slot.right { right: -10px; top: 50%; transform: translateY(-50%); }
+
+        .trick-area {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 340px;
+            height: 300px;
+            border: 3px solid white;
+            border-radius: 12px;
+            background: rgba(255,255,255,0.05);
+        }
+        .card-slot {
+            position: absolute;
+            background: white;
+            color: black;
+            padding: 14px 20px;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 15px;
+            min-width: 110px;
+            text-align: center;
+        }
+        .card-slot.top { top: 14px; left: 50%; transform: translateX(-50%); }
+        .card-slot.bottom { bottom: 14px; left: 50%; transform: translateX(-50%); }
+        .card-slot.left { left: 14px; top: 50%; transform: translateY(-50%); }
+        .card-slot.right { right: 14px; top: 50%; transform: translateY(-50%); }
+
+        #bottom-area {
+            flex-shrink: 0;
+            padding-bottom: 10px;
+        }
+        #score-bar {
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 4px 0;
+        }
+        #turn-label h2 {
+            margin: 6px 0;
+            font-size: 18px;
+        }
+        #hand-section {
+            padding-bottom: 10px;
+        }
+
+        .card-btn {
+            background: none;
+            border: none;
+            padding: 2px;
+            cursor: pointer;
+        }
+        .card-img {
+            width: 60px;
+        }
+        .trick-card-img {
+            width: 45px;
+        }
+
+        .confetti-piece {
+            position: fixed;
+            top: -20px;
+            width: 10px;
+            height: 10px;
+            opacity: 0.9;
+            z-index: 999;
+        }
+
+        #name-form {
+            margin-top: 40px;
+        }
+        #name-form label {
+            display: block;
+            margin: 10px 0 4px;
+        }
+    </style>
+</head>
+<body>
+    <h1 style="margin: 6px 0; font-size: 22px;">Court Piece</h1>
+
+    <div id="top-bar"></div>
+    <div id="score-bar"></div>
+
+    <div id="name-form">
+        <h2>Enter Player Names</h2>
+        <label>Player 1: <input type="text" id="name-input-1" placeholder="Player 1"></label>
+        <label>Player 2: <input type="text" id="name-input-2" placeholder="Player 2"></label>
+        <label>Player 3: <input type="text" id="name-input-3" placeholder="Player 3"></label>
+        <label>Player 4: <input type="text" id="name-input-4" placeholder="Player 4"></label>
+        <br>
+        <button onclick="beginGame()">Start Game</button>
+    </div>
+
+    <div id="setup-area" style="display: none;">
+        <div id="dealer-section"></div>
+        <div id="trump-section"></div>
+    </div>
+
+    <div id="table-area">
+        <div class="table-wrapper" id="table-wrapper" style="display: none;">
+            <div class="player-slot top" id="slot-top"></div>
+            <div class="player-slot left" id="slot-left"></div>
+            <div class="player-slot bottom" id="slot-bottom"></div>
+            <div class="player-slot right" id="slot-right"></div>
+
+            <div class="trick-area">
+                <div class="card-slot top" id="card-top">—</div>
+                <div class="card-slot left" id="card-left">—</div>
+                <div class="card-slot bottom" id="card-bottom">—</div>
+                <div class="card-slot right" id="card-right">—</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="bottom-area">
+        <div id="turn-label"></div>
+        <div id="hand-section"></div>
+        <button id="restart-btn" onclick="restartGame()" style="display: none;">Play Again</button>
+    </div>
+
+    <script>
+        const positions = {
+            "Player 1": "top",
+            "Player 2": "left",
+            "Player 3": "bottom",
+            "Player 4": "right"
+        };
+
+        let playerNames = {
+            "Player 1": "Player 1",
+            "Player 2": "Player 2",
+            "Player 3": "Player 3",
+            "Player 4": "Player 4"
+        };
+
+        function displayName(player) {
+            return playerNames[player] || player;
+        }
+
+        const rankCodes = {
+            "2":"2", "3":"3", "4":"4", "5":"5", "6":"6", "7":"7", "8":"8", "9":"9",
+            "10":"0", "Jack":"J", "Queen":"Q", "King":"K", "Ace":"A"
+        };
+        const suitCodes = {
+            "Hearts":"H", "Diamonds":"D", "Clubs":"C", "Spades":"S"
+        };
+
+        function cardImageUrl(cardText) {
+            const parts = cardText.split(" of ");
+            const rank = parts[0];
+            const suit = parts[1];
+            const code = rankCodes[rank] + suitCodes[suit];
+            return "https://deckofcardsapi.com/static/img/" + code + ".png";
+        }
+
+        const cardSound = new Audio("https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3");
+        const trickWinSound = new Audio("https://assets.mixkit.co/active_storage/sfx/2019/2019-preview.mp3");
+        const applauseSound = new Audio("https://assets.mixkit.co/active_storage/sfx/2013/2013-preview.mp3");
+
+        function playSound(sound) {
+            sound.currentTime = 0;
+            sound.play().catch(function() {});
+        }
+
+        function launchConfetti() {
+            const colors = ["#ffd700", "#ff4d4d", "#4dff88", "#4da6ff", "#ff4dd2"];
+            for (let i = 0; i < 80; i++) {
+                const piece = document.createElement("div");
+                piece.className = "confetti-piece";
+                piece.style.left = Math.random() * 100 + "vw";
+                piece.style.background = colors[Math.floor(Math.random() * colors.length)];
+                piece.style.transform = "rotate(" + Math.random() * 360 + "deg)";
+                document.body.appendChild(piece);
+
+                const fallTime = 2000 + Math.random() * 1500;
+                piece.animate([
+                    { top: "-20px", transform: piece.style.transform },
+                    { top: "100vh", transform: "rotate(720deg)" }
+                ], { duration: fallTime, easing: "ease-in" });
+
+                setTimeout(function() {
+                    piece.remove();
+                }, fallTime);
+            }
+        }
+
+        let trumpSuit = null;
+
+        function beginGame() {
+            const input1 = document.getElementById("name-input-1").value.trim();
+            const input2 = document.getElementById("name-input-2").value.trim();
+            const input3 = document.getElementById("name-input-3").value.trim();
+            const input4 = document.getElementById("name-input-4").value.trim();
+
+            playerNames["Player 1"] = input1 !== "" ? input1 : "Player 1";
+            playerNames["Player 2"] = input2 !== "" ? input2 : "Player 2";
+            playerNames["Player 3"] = input3 !== "" ? input3 : "Player 3";
+            playerNames["Player 4"] = input4 !== "" ? input4 : "Player 4";
+
+            document.getElementById("name-form").style.display = "none";
+            document.getElementById("setup-area").style.display = "block";
+
+            startGame();
+        }
+
+        async function startGame() {
+            const response = await fetch("http://127.0.0.1:8000/start-game", {
+                method: "POST"
+            });
+            const data = await response.json();
+            showDealerSelection(data);
+        }
+
+        function showDealerSelection(data) {
+            const section = document.getElementById("dealer-section");
+            section.innerHTML = "<h2>Dealer Selection</h2>";
+
+            for (const player in data.dealer_reveal) {
+                const card = data.dealer_reveal[player];
+                const isDealer = (player === data.dealer);
+
+                const box = document.createElement("div");
+                box.className = "reveal-box" + (isDealer ? " dealer-highlight" : "");
+                box.innerHTML = "<strong>" + displayName(player) + "</strong><br>" + card;
+                section.appendChild(box);
+            }
+
+            const dealerMsg = document.createElement("p");
+            dealerMsg.innerHTML = "<strong>" + displayName(data.dealer) + "</strong> is the dealer!";
+            section.appendChild(dealerMsg);
+
+            showTrumpSelection(data);
+        }
+
+        function showTrumpSelection(data) {
+            const section = document.getElementById("trump-section");
+            section.innerHTML = "<h2>" + displayName(data.trump_selector) + " - Choose Trump Suit</h2>";
+
+            const handDiv = document.createElement("div");
+            data.trump_selector_hand.forEach(function(cardText) {
+                const img = document.createElement("img");
+                img.src = cardImageUrl(cardText);
+                img.className = "card-img";
+                handDiv.appendChild(img);
+            });
+            section.appendChild(handDiv);
+
+            const suits = ["Hearts", "Diamonds", "Clubs", "Spades"];
+            suits.forEach(function(suit) {
+                const btn = document.createElement("button");
+                btn.textContent = suit;
+                btn.onclick = function() {
+                    selectTrump(suit);
+                };
+                section.appendChild(btn);
+            });
+        }
+
+        async function selectTrump(suit) {
+            const response = await fetch("http://127.0.0.1:8000/select-trump?suit=" + suit, {
+                method: "POST"
+            });
+            const data = await response.json();
+            trumpSuit = data.trump_suit;
+
+            dealRemaining();
+        }
+
+        async function dealRemaining() {
+            const response = await fetch("http://127.0.0.1:8000/deal-remaining", {
+                method: "POST"
+            });
+            const data = await response.json();
+
+            document.getElementById("setup-area").style.display = "none";
+
+            setupTable(data.teams);
+            updateScoreBar({ "Team A": 0, "Team B": 0 });
+            updateTopBar("—");
+            clearTrickArea();
+
+            showCurrentTurn(data.current_turn);
+        }
+
+        function setupTable(teams) {
+            document.getElementById("table-wrapper").style.display = "block";
+
+            for (const player in positions) {
+                const side = positions[player];
+                const slot = document.getElementById("slot-" + side);
+                let team = teams["Team A"].includes(player) ? "Team A" : "Team B";
+                slot.innerHTML = displayName(player) + "<br><small>" + team + "</small>";
+            }
+        }
+
+        function updateTopBar(ledSuit) {
+            document.getElementById("top-bar").innerHTML =
+                "Trump: " + trumpSuit + "   |   Led Suit: " + ledSuit;
+        }
+
+        function updateScoreBar(scores) {
+            document.getElementById("score-bar").innerHTML =
+                "Team A: " + scores["Team A"] + "  |  Team B: " + scores["Team B"];
+        }
+
+        function clearTrickArea() {
+            document.getElementById("card-top").textContent = "—";
+            document.getElementById("card-left").textContent = "—";
+            document.getElementById("card-bottom").textContent = "—";
+            document.getElementById("card-right").textContent = "—";
+        }
+
+        function updateTrickArea(trickSoFar) {
+            clearTrickArea();
+            trickSoFar.forEach(function(entry) {
+                const side = positions[entry.player];
+                const slot = document.getElementById("card-" + side);
+                slot.innerHTML = "";
+                const img = document.createElement("img");
+                img.src = cardImageUrl(entry.card);
+                img.className = "trick-card-img";
+                slot.appendChild(img);
+            });
+
+            if (trickSoFar.length > 0) {
+                const ledCard = trickSoFar[0].card;
+                const ledSuit = ledCard.split(" of ")[1];
+                updateTopBar(ledSuit);
+            } else {
+                updateTopBar("—");
+            }
+        }
+
+        function highlightActivePlayer(player) {
+            for (const p in positions) {
+                document.getElementById("slot-" + positions[p]).classList.remove("active-turn");
+            }
+            document.getElementById("slot-" + positions[player]).classList.add("active-turn");
+        }
+
+        async function showCurrentTurn(player) {
+            highlightActivePlayer(player);
+
+            const response = await fetch("http://127.0.0.1:8000/my-hand?player=" + player);
+            const data = await response.json();
+
+            document.getElementById("turn-label").innerHTML = "<h2>" + displayName(player) + "'s turn</h2>";
+
+            const handSection = document.getElementById("hand-section");
+            handSection.innerHTML = "";
+
+            data.hand.forEach(function(cardText) {
+                const parts = cardText.split(" of ");
+                const rank = parts[0];
+                const suit = parts[1];
+                const isValid = data.valid_moves.includes(cardText);
+
+                const btn = document.createElement("button");
+                btn.className = "card-btn";
+                btn.disabled = !isValid;
+                btn.style.opacity = isValid ? "1" : "0.4";
+                btn.onclick = function() {
+                    playCard(player, rank, suit);
+                };
+
+                const img = document.createElement("img");
+                img.src = cardImageUrl(cardText);
+                img.className = "card-img";
+                btn.appendChild(img);
+
+                handSection.appendChild(btn);
+            });
+        }
+
+        async function playCard(player, rank, suit) {
+            const url = "http://127.0.0.1:8000/play-card?player=" + player + "&rank=" + rank + "&suit=" + suit;
+            const response = await fetch(url, { method: "POST" });
+            const data = await response.json();
+
+            if (data.error) {
+                alert(data.error);
+                return;
+            }
+
+            playSound(cardSound);
+            updateTrickArea(data.trick_so_far);
+
+            if (data.round_over) {
+                playSound(applauseSound);
+                launchConfetti();
+                document.getElementById("turn-label").innerHTML =
+                    "<h2>ROUND OVER! " + displayName(data.round_winner) + " wins!</h2>";
+                document.getElementById("hand-section").innerHTML = "";
+                updateScoreBar(data.scores);
+                document.getElementById("restart-btn").style.display = "inline-block";
+                return;
+            }
+
+            if (data.trick_winner) {
+                playSound(trickWinSound);
+                updateScoreBar(data.scores);
+                document.getElementById("turn-label").innerHTML =
+                    "<h2>" + displayName(data.trick_winner) + " wins the trick!</h2>";
+                document.getElementById("hand-section").innerHTML = "";
+
+                setTimeout(function() {
+                    clearTrickArea();
+                    updateTopBar("—");
+                    showCurrentTurn(data.trick_winner);
+                }, 1500);
+            } else if (data.current_turn) {
+                showCurrentTurn(data.current_turn);
+            }
+        }
+        function restartGame() {
+            document.getElementById("restart-btn").style.display = "none";
+            document.getElementById("table-wrapper").style.display = "none";
+            document.getElementById("dealer-section").innerHTML = "";
+            document.getElementById("trump-section").innerHTML = "";
+            document.getElementById("turn-label").innerHTML = "";
+            document.getElementById("hand-section").innerHTML = "";
+            updateTopBar("—");
+            document.getElementById("name-form").style.display = "block";
+        }
+    </script>
+</body>
+</html>
