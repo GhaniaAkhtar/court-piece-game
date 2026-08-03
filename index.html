@@ -286,7 +286,7 @@
         }
 
         async function startGame() {
-            const response = await fetch("http://127.0.0.1:8000/start-game", {
+            const response = await fetch("/api/start-game", {
                 method: "POST"
             });
             const data = await response.json();
@@ -339,7 +339,7 @@
         }
 
         async function selectTrump(suit) {
-            const response = await fetch("http://127.0.0.1:8000/select-trump?suit=" + suit, {
+            const response = await fetch("/api/select-trump?suit=" + suit, {
                 method: "POST"
             });
             const data = await response.json();
@@ -349,7 +349,7 @@
         }
 
         async function dealRemaining() {
-            const response = await fetch("http://127.0.0.1:8000/deal-remaining", {
+            const response = await fetch("/api/deal-remaining", {
                 method: "POST"
             });
             const data = await response.json();
@@ -423,7 +423,7 @@
         async function showCurrentTurn(player) {
             highlightActivePlayer(player);
 
-            const response = await fetch("http://127.0.0.1:8000/my-hand?player=" + player);
+            const response = await fetch("/api/my-hand?player=" + player);
             const data = await response.json();
 
             document.getElementById("turn-label").innerHTML = "<h2>" + displayName(player) + "'s turn</h2>";
@@ -455,7 +455,7 @@
         }
 
         async function playCard(player, rank, suit) {
-            const url = "http://127.0.0.1:8000/play-card?player=" + player + "&rank=" + rank + "&suit=" + suit;
+            const url = "/api/play-card?player=" + player + "&rank=" + rank + "&suit=" + suit;
             const response = await fetch(url, { method: "POST" });
             const data = await response.json();
 
