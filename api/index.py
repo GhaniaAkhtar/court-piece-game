@@ -26,7 +26,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-redis = Redis.from_env()
+redis = Redis(url=os.environ["KV_REST_API_URL"], token=os.environ["KV_REST_API_TOKEN"])
 STATE_KEY = "court_piece_game_state"
 
 CARD_LIST_KEYS = {"deck", "remaining_deck"}
