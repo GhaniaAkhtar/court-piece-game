@@ -1,21 +1,10 @@
 import json
 import os
+import random
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from upstash_redis import Redis
-
-from game import (
-    Card,
-    card_to_dict,
-    card_from_dict,
-    create_deck,
-    select_dealer,
-    deal_five_cards,
-    deal_remaining_cards,
-    get_valid_moves,
-    determine_trick_winner,
-)
 
 app = FastAPI()
 
@@ -25,6 +14,123 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ---------------------------------------------------------------------------
+# Game engine (merged in from game.py — Vercel's Python runtime doesn't
+# reliably resolve imports between sibling files in /api, so everything
+# lives in this one file instead).
+# ---------------------------------------------------------------------------
+
+
+class Card:
+    """Represents a single playing card with a rank and suit."""
+
+    def __init__(self, rank, suit):
+        self.rank = rank
+        self.suit = suit
+
+    def __repr__(self):
+        return f"{self.rank} of {self.suit}"
+
+    def __eq__(self, other):
+        return isinstance(other, Card) and self.rank == other.rank and self.suit == other.suit
+
+
+def card_to_dict(card):
+    return {"rank": card.rank, "suit": card.suit}
+
+
+def card_from_dict(data):
+    return Card(data["rank"], data["suit"])
+
+
+def create_deck():
+    suits = ["Hearts", "Diamonds", "Clubs", "Spades"]
+    ranks = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "Jack", "Queen", "King", "Ace"]
+
+    deck = []
+    for suit in suits:
+        for rank in ranks:
+            deck.append(Card(rank, suit))
+    return deck
+
+
+def determine_trick_winner(cards_played, led_suit, trump_suit):
+    rank_order = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "Jack", "Queen", "King", "Ace"]
+
+    def card_strength(card):
+        if card.suit == trump_suit:
+            return (1, rank_order.index(card.rank))
+        elif card.suit == led_suit:
+            return (0, rank_order.index(card.rank))
+        else:
+            return (-1, -1)
+
+    return max(cards_played, key=lambda x: card_strength(x[1]))
+
+
+def get_valid_moves(hand, led_suit):
+    if led_suit is None:
+        return hand[:]
+
+    cards_of_led_suit = [card for card in hand if card.suit == led_suit]
+    return cards_of_led_suit if cards_of_led_suit else hand[:]
+
+
+def select_dealer(deck):
+    rank_order = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "Jack", "Queen", "King", "Ace"]
+    players = ["Player 1", "Player 2", "Player 3", "Player 4"]
+
+    while True:
+        shuffled = deck.copy()
+        random.shuffle(shuffled)
+
+        revealed = {
+            "Player 1": shuffled[0],
+            "Player 2": shuffled[1],
+            "Player 3": shuffled[2],
+            "Player 4": shuffled[3]
+        }
+
+        highest_rank = max(rank_order.index(card.rank) for card in revealed.values())
+        winners = [player for player, card in revealed.items() if rank_order.index(card.rank) == highest_rank]
+
+        if len(winners) == 1:
+            return winners[0], revealed
+
+
+def deal_five_cards(deck):
+    random.shuffle(deck)
+
+    five_card_hands = {
+        "Player 1": deck[0:5],
+        "Player 2": deck[5:10],
+        "Player 3": deck[10:15],
+        "Player 4": deck[15:20]
+    }
+    remaining_deck = deck[20:]
+    return five_card_hands, remaining_deck
+
+
+def deal_remaining_cards(deck, five_card_hands):
+    seating_order = ["Player 1", "Player 2", "Player 3", "Player 4"]
+    full_hands = {player: five_card_hands[player].copy() for player in seating_order}
+
+    remaining = deck.copy()
+    while remaining:
+        for player in seating_order:
+            batch = remaining[:4]
+            remaining = remaining[4:]
+            full_hands[player].extend(batch)
+            if not remaining:
+                break
+
+    return full_hands
+
+
+# ---------------------------------------------------------------------------
+# Persistent state (Redis) — replaces the old in-memory `game_state = {}`.
+# ---------------------------------------------------------------------------
 
 redis = Redis(url=os.environ["KV_REST_API_URL"], token=os.environ["KV_REST_API_TOKEN"])
 STATE_KEY = "court_piece_game_state"
@@ -72,6 +178,10 @@ def load_state():
 def save_state(state):
     redis.set(STATE_KEY, json.dumps(serialize_state(state)))
 
+
+# ---------------------------------------------------------------------------
+# Routes
+# ---------------------------------------------------------------------------
 
 @app.get("/api")
 def read_root():
